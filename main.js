@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { ARButton } from 'three/examples/jsm/webxr/ARButton.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 let container;
 let camera, scene, renderer;
 let controller, reticle;
+let orbitControls;
 
 let hitTestSource = null;
 let hitTestSourceRequested = false;
@@ -27,6 +29,7 @@ function init() {
   scene = new THREE.Scene();
 
   camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+  camera.position.set(0, 1.5, 2); // Pull camera back so we can see the model in 3D mode
 
   const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 3);
   light.position.set(0.5, 1, 0.25);
@@ -42,6 +45,11 @@ function init() {
   renderer.xr.enabled = true;
   container.appendChild(renderer.domElement);
 
+  // Orbit controls for laptop/desktop preview
+  orbitControls = new OrbitControls(camera, renderer.domElement);
+  orbitControls.enableDamping = true;
+  orbitControls.target.set(0, 0, 0);
+
   // AR Button setup (requires hit-test feature)
   const arButton = ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] });
   document.body.appendChild(arButton);
@@ -51,11 +59,24 @@ function init() {
     document.getElementById('onboarding-screen').style.display = 'none';
     document.getElementById('ui-container').classList.remove('hidden');
     document.getElementById('instructions').style.opacity = '1';
+    
+    // In AR, we remove the model until the user places it
+    if(islandModelGroup) {
+      scene.remove(islandModelGroup);
+    }
+    placed = false;
   });
 
   renderer.xr.addEventListener('sessionend', () => {
     document.getElementById('onboarding-screen').style.display = 'flex';
     document.getElementById('ui-container').classList.add('hidden');
+    
+    // Returning to desktop mode, show the model again
+    if(islandModelGroup) {
+      islandModelGroup.position.set(0, -0.5, 0);
+      islandModelGroup.scale.set(0.05, 0.05, 0.05);
+      scene.add(islandModelGroup);
+    }
   });
 
   // Reticle setup (shows where to place object)
@@ -90,8 +111,9 @@ function init() {
   const loader = new GLTFLoader(manager);
   
   islandModelGroup = new THREE.Group(); 
-  // initial sensible scale for AR (can be overridden by pinch zoom)
   islandModelGroup.scale.set(0.05, 0.05, 0.05);
+  // Put it slightly below the camera for preview mode
+  islandModelGroup.position.set(0, -0.5, 0);
 
   loader.load('./island6_model.glb', (gltf) => {
     const island = gltf.scene;
@@ -107,34 +129,29 @@ function init() {
       });
 
       island.traverse((node) => {
-        // Spawn node name looks like "1treetree_swapn..."
         if (node.name && node.name.includes('tree_swapn')) {
           if (trees.length > 0) {
-            // Pick random tree variant
             const randomTree = trees[Math.floor(Math.random() * trees.length)].clone();
-            
-            // Match position of the spawn node
             randomTree.position.copy(node.position);
             randomTree.rotation.copy(node.rotation);
             randomTree.scale.copy(node.scale);
-            
-            // Add tree to island parent to keep local transforms valid
             node.parent.add(randomTree);
           }
         }
       });
-      console.log("Trees spawned successfully");
+      
+      // Add to scene immediately so laptop users can view it in 3D
+      if(!renderer.xr.isPresenting) {
+        scene.add(islandModelGroup);
+      }
     });
   });
 
-  // Controller for placing
   controller = renderer.xr.getController(0);
   controller.addEventListener('select', onSelect);
   scene.add(controller);
 
   window.addEventListener('resize', onWindowResize);
-  
-  // Touch gestures for scaling and rotating
   setupTouchGestures();
 }
 
@@ -142,7 +159,7 @@ function setupTouchGestures() {
   const dom = renderer.domElement;
   
   dom.addEventListener('touchstart', (e) => {
-    if (!placed) return;
+    if (!placed || !renderer.xr.isPresenting) return;
     if (e.touches.length === 2) {
       initialDistance = getDistance(e.touches);
       initialScale = islandModelGroup.scale.x;
@@ -152,7 +169,7 @@ function setupTouchGestures() {
   });
 
   dom.addEventListener('touchmove', (e) => {
-    if (!placed) return;
+    if (!placed || !renderer.xr.isPresenting) return;
     if (e.touches.length === 2 && initialDistance) {
       const currentDistance = getDistance(e.touches);
       const scaleFactor = currentDistance / initialDistance;
@@ -200,6 +217,11 @@ function animate() {
 }
 
 function render(timestamp, frame) {
+  // Update orbit controls if we are not in AR
+  if (!renderer.xr.isPresenting) {
+    orbitControls.update();
+  }
+
   if (frame && !placed) {
     const referenceSpace = renderer.xr.getReferenceSpace();
     const session = renderer.xr.getSession();
@@ -213,7 +235,7 @@ function render(timestamp, frame) {
       session.addEventListener('end', () => {
         hitTestSourceRequested = false;
         hitTestSource = null;
-        placed = false; // Reset if they close AR session
+        placed = false; 
         if(islandModelGroup && islandModelGroup.parent) {
           scene.remove(islandModelGroup);
         }
