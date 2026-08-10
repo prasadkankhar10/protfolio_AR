@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ARButton } from 'three/examples/jsm/webxr/ARButton.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 let container;
@@ -108,7 +109,11 @@ function init() {
   };
 
   // Loading Models
+  const dracoLoader = new DRACOLoader();
+  dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+  
   const loader = new GLTFLoader(manager);
+  loader.setDRACOLoader(dracoLoader);
   
   islandModelGroup = new THREE.Group(); 
   islandModelGroup.scale.set(0.05, 0.05, 0.05);
