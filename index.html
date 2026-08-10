@@ -7,13 +7,43 @@
     <link rel="stylesheet" href="./style.css">
   </head>
   <body>
-    <div id="ui-container">
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+      <div class="spinner"></div>
+      <h2>Downloading World...</h2>
+      <p id="loading-progress">0%</p>
+    </div>
+
+    <!-- Onboarding / Instructions Screen (hidden until loaded) -->
+    <div id="onboarding-screen" class="hidden">
+      <h1>AR Island Setup</h1>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <p>Click <b>"START AR"</b> below to open your camera.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <p>Scan a flat floor or table by moving your phone slowly.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <p>When the green ring appears, <b>tap the screen</b> to place the island.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <p><b>Pinch</b> to zoom in/out, and <b>swipe</b> to rotate.</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- In-Game UI (hidden until placed) -->
+    <div id="ui-container" class="hidden">
       <div id="instructions">
-        <h1>AR Island</h1>
-        <p>Point your camera at a flat surface and tap to place the island.</p>
         <p>Pinch to scale, drag to rotate.</p>
       </div>
     </div>
+
     <!-- Three.js App -->
     <script type="module" src="./main.js"></script>
   </body>

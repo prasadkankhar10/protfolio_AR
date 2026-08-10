@@ -43,7 +43,20 @@ function init() {
   container.appendChild(renderer.domElement);
 
   // AR Button setup (requires hit-test feature)
-  document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+  const arButton = ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] });
+  document.body.appendChild(arButton);
+
+  // UI Flow Logic
+  renderer.xr.addEventListener('sessionstart', () => {
+    document.getElementById('onboarding-screen').style.display = 'none';
+    document.getElementById('ui-container').classList.remove('hidden');
+    document.getElementById('instructions').style.opacity = '1';
+  });
+
+  renderer.xr.addEventListener('sessionend', () => {
+    document.getElementById('onboarding-screen').style.display = 'flex';
+    document.getElementById('ui-container').classList.add('hidden');
+  });
 
   // Reticle setup (shows where to place object)
   const reticleGeometry = new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2);
@@ -53,8 +66,28 @@ function init() {
   reticle.visible = false;
   scene.add(reticle);
 
+  // Loading Manager Setup
+  const manager = new THREE.LoadingManager();
+  
+  manager.onProgress = function (url, itemsLoaded, itemsTotal) {
+    const percent = Math.floor((itemsLoaded / itemsTotal) * 100);
+    const progressEl = document.getElementById('loading-progress');
+    if(progressEl) progressEl.innerText = percent + '%';
+  };
+
+  manager.onLoad = function () {
+    const loadingScreen = document.getElementById('loading-screen');
+    const onboardingScreen = document.getElementById('onboarding-screen');
+    
+    loadingScreen.classList.add('fade-out');
+    setTimeout(() => {
+      loadingScreen.style.display = 'none';
+      onboardingScreen.classList.remove('hidden');
+    }, 500);
+  };
+
   // Loading Models
-  const loader = new GLTFLoader();
+  const loader = new GLTFLoader(manager);
   
   islandModelGroup = new THREE.Group(); 
   // initial sensible scale for AR (can be overridden by pinch zoom)
@@ -68,7 +101,6 @@ function init() {
     loader.load('./trees.glb', (treeGltf) => {
       const trees = [];
       treeGltf.scene.traverse((child) => {
-         // The trees in trees.glb are named Tree_01, Pine_Tree_01, etc.
          if(child.name.includes('Tree') && child.isMesh) {
             trees.push(child);
          }
@@ -83,7 +115,6 @@ function init() {
             
             // Match position of the spawn node
             randomTree.position.copy(node.position);
-            // Some models might require adjusting rotation or scale here, matching node's transformation
             randomTree.rotation.copy(node.rotation);
             randomTree.scale.copy(node.scale);
             
@@ -151,7 +182,6 @@ function getDistance(touches) {
 function onSelect() {
   if (reticle.visible && !placed && islandModelGroup) {
     islandModelGroup.position.setFromMatrixPosition(reticle.matrix);
-    // You could also take rotation from reticle if desired, but often identity is fine or y-axis rotation
     scene.add(islandModelGroup);
     placed = true;
     reticle.visible = false;
@@ -187,7 +217,6 @@ function render(timestamp, frame) {
         if(islandModelGroup && islandModelGroup.parent) {
           scene.remove(islandModelGroup);
         }
-        document.getElementById('instructions').style.opacity = '1';
       });
       hitTestSourceRequested = true;
     }
