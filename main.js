@@ -52,7 +52,11 @@ function init() {
   orbitControls.target.set(0, 0, 0);
 
   // AR Button setup (requires hit-test feature)
-  const arButton = ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] });
+  const arButton = ARButton.createButton(renderer, { 
+    requiredFeatures: ['hit-test'],
+    optionalFeatures: ['dom-overlay'],
+    domOverlay: { root: document.body }
+  });
   document.body.appendChild(arButton);
 
   // UI Flow Logic
