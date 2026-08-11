@@ -51,10 +51,9 @@ function init() {
   orbitControls.enableDamping = true;
   orbitControls.target.set(0, 0, 0);
 
-  // AR Button setup (requires hit-test feature)
+  // AR Button setup (make hit-test optional so older phones can still use force-spawn)
   const arButton = ARButton.createButton(renderer, { 
-    requiredFeatures: ['hit-test'],
-    optionalFeatures: ['dom-overlay'],
+    optionalFeatures: ['hit-test', 'dom-overlay'],
     domOverlay: { root: document.getElementById('ui-container') }
   });
   document.body.appendChild(arButton);
