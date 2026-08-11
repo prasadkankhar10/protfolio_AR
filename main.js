@@ -55,7 +55,7 @@ function init() {
   const arButton = ARButton.createButton(renderer, { 
     requiredFeatures: ['hit-test'],
     optionalFeatures: ['dom-overlay'],
-    domOverlay: { root: document.body }
+    domOverlay: { root: document.getElementById('ui-container') }
   });
   document.body.appendChild(arButton);
 
@@ -211,16 +211,27 @@ function onSelect() {
       // Place exactly on the detected physical floor
       islandModelGroup.position.setFromMatrixPosition(reticle.matrix);
     } else {
-      // Fallback: Force spawn 2 meters in front of the camera, and 1.5 meters down (average floor height)
+      // Fallback: Force spawn on a virtual floor 1.5m below the camera
+      const xrCamera = renderer.xr.getCamera(camera);
       const cameraPosition = new THREE.Vector3();
-      const cameraDirection = new THREE.Vector3();
-      camera.getWorldPosition(cameraPosition);
-      camera.getWorldDirection(cameraDirection);
+      xrCamera.getWorldPosition(cameraPosition);
       
-      // Calculate a spot 2 meters in front of where we are looking
-      islandModelGroup.position.copy(cameraPosition).add(cameraDirection.multiplyScalar(2));
-      // Push it down to simulate the floor
-      islandModelGroup.position.y -= 1.5; 
+      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 1.5); // Virtual floor plane at y = -1.5
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(new THREE.Vector2(0, 0), xrCamera);
+      
+      const target = new THREE.Vector3();
+      const intersection = raycaster.ray.intersectPlane(plane, target);
+      
+      if (intersection) {
+        islandModelGroup.position.copy(target);
+      } else {
+        // If looking above horizon, just drop it 2m in front
+        const cameraDirection = new THREE.Vector3();
+        xrCamera.getWorldDirection(cameraDirection);
+        islandModelGroup.position.copy(cameraPosition).add(cameraDirection.multiplyScalar(2));
+        islandModelGroup.position.y -= 1.5; 
+      }
       
       // Make it face the user
       islandModelGroup.lookAt(cameraPosition.x, islandModelGroup.position.y, cameraPosition.z);
