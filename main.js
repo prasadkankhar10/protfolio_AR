@@ -206,12 +206,32 @@ function getDistance(touches) {
 }
 
 function onSelect() {
-  if (reticle.visible && !placed && islandModelGroup) {
-    islandModelGroup.position.setFromMatrixPosition(reticle.matrix);
+  if (!placed && islandModelGroup) {
+    if (reticle.visible) {
+      // Place exactly on the detected physical floor
+      islandModelGroup.position.setFromMatrixPosition(reticle.matrix);
+    } else {
+      // Fallback: Force spawn 2 meters in front of the camera, and 1.5 meters down (average floor height)
+      const cameraPosition = new THREE.Vector3();
+      const cameraDirection = new THREE.Vector3();
+      camera.getWorldPosition(cameraPosition);
+      camera.getWorldDirection(cameraDirection);
+      
+      // Calculate a spot 2 meters in front of where we are looking
+      islandModelGroup.position.copy(cameraPosition).add(cameraDirection.multiplyScalar(2));
+      // Push it down to simulate the floor
+      islandModelGroup.position.y -= 1.5; 
+      
+      // Make it face the user
+      islandModelGroup.lookAt(cameraPosition.x, islandModelGroup.position.y, cameraPosition.z);
+    }
+    
     scene.add(islandModelGroup);
     placed = true;
     reticle.visible = false;
-    document.getElementById('instructions').style.opacity = '0';
+    
+    const instructions = document.getElementById('instructions');
+    if(instructions) instructions.style.opacity = '0';
   }
 }
 
