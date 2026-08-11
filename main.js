@@ -9,8 +9,7 @@ let camera, scene, renderer;
 let controller, reticle;
 let orbitControls;
 
-let hitTestSource = null;
-let hitTestSourceRequested = false;
+
 
 let islandModelGroup;
 let placed = false;
@@ -23,7 +22,7 @@ let lastX = 0;
 init();
 animate();
 
-function init() {
+async function init() {
   container = document.createElement('div');
   document.body.appendChild(container);
 
@@ -51,11 +50,33 @@ function init() {
   orbitControls.enableDamping = true;
   orbitControls.target.set(0, 0, 0);
 
-  // AR Button setup
-  // We pass an empty configuration to maximize compatibility.
-  // Because we have the Force-Spawn fallback, we don't strictly need hit-test.
-  // Removing dom-overlay prevents crashes on buggy mobile browsers.
-  const arButton = ARButton.createButton(renderer, {});
+  // Load Image Marker
+  let imageBitmap = null;
+  try {
+    const img = new Image();
+    img.src = './qr-marker.jpg';
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+    imageBitmap = await createImageBitmap(img);
+  } catch (error) {
+    console.warn('Failed to load AR target image:', error);
+  }
+
+  const arOptions = {
+    optionalFeatures: ['image-tracking', 'dom-overlay'],
+    domOverlay: { root: document.getElementById('ui-container') }
+  };
+  
+  if (imageBitmap) {
+    arOptions.trackedImages = [{
+      image: imageBitmap,
+      widthInMeters: 0.15
+    }];
+  }
+
+  const arButton = ARButton.createButton(renderer, arOptions);
   document.body.appendChild(arButton);
 
   // UI Flow Logic
@@ -83,13 +104,7 @@ function init() {
     }
   });
 
-  // Reticle setup (shows where to place object)
-  const reticleGeometry = new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2);
-  const reticleMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
-  reticle = new THREE.Mesh(reticleGeometry, reticleMaterial);
-  reticle.matrixAutoUpdate = false;
-  reticle.visible = false;
-  scene.add(reticle);
+
 
   // Loading Manager Setup
   const manager = new THREE.LoadingManager();
@@ -206,39 +221,33 @@ function getDistance(touches) {
 
 function onSelect() {
   if (!placed && islandModelGroup) {
-    if (reticle.visible) {
-      // Place exactly on the detected physical floor
-      islandModelGroup.position.setFromMatrixPosition(reticle.matrix);
+    // Force spawn on a virtual floor 1.5m below the camera
+    const xrCamera = renderer.xr.getCamera(camera);
+    const cameraPosition = new THREE.Vector3();
+    xrCamera.getWorldPosition(cameraPosition);
+    
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 1.5); // Virtual floor plane at y = -1.5
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(0, 0), xrCamera);
+    
+    const target = new THREE.Vector3();
+    const intersection = raycaster.ray.intersectPlane(plane, target);
+    
+    if (intersection) {
+      islandModelGroup.position.copy(target);
     } else {
-      // Fallback: Force spawn on a virtual floor 1.5m below the camera
-      const xrCamera = renderer.xr.getCamera(camera);
-      const cameraPosition = new THREE.Vector3();
-      xrCamera.getWorldPosition(cameraPosition);
-      
-      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 1.5); // Virtual floor plane at y = -1.5
-      const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera(new THREE.Vector2(0, 0), xrCamera);
-      
-      const target = new THREE.Vector3();
-      const intersection = raycaster.ray.intersectPlane(plane, target);
-      
-      if (intersection) {
-        islandModelGroup.position.copy(target);
-      } else {
-        // If looking above horizon, just drop it 2m in front
-        const cameraDirection = new THREE.Vector3();
-        xrCamera.getWorldDirection(cameraDirection);
-        islandModelGroup.position.copy(cameraPosition).add(cameraDirection.multiplyScalar(2));
-        islandModelGroup.position.y -= 1.5; 
-      }
-      
-      // Make it face the user
-      islandModelGroup.lookAt(cameraPosition.x, islandModelGroup.position.y, cameraPosition.z);
+      // If looking above horizon, just drop it 2m in front
+      const cameraDirection = new THREE.Vector3();
+      xrCamera.getWorldDirection(cameraDirection);
+      islandModelGroup.position.copy(cameraPosition).add(cameraDirection.multiplyScalar(2));
+      islandModelGroup.position.y -= 1.5; 
     }
+    
+    // Make it face the user
+    islandModelGroup.lookAt(cameraPosition.x, islandModelGroup.position.y, cameraPosition.z);
     
     scene.add(islandModelGroup);
     placed = true;
-    reticle.visible = false;
     
     const instructions = document.getElementById('instructions');
     if(instructions) instructions.style.opacity = '0';
@@ -262,35 +271,21 @@ function render(timestamp, frame) {
   }
 
   if (frame && !placed) {
-    const referenceSpace = renderer.xr.getReferenceSpace();
-    const session = renderer.xr.getSession();
-
-    if (hitTestSourceRequested === false) {
-      session.requestReferenceSpace('viewer').then((referenceSpace) => {
-        session.requestHitTestSource({ space: referenceSpace }).then((source) => {
-          hitTestSource = source;
-        });
-      });
-      session.addEventListener('end', () => {
-        hitTestSourceRequested = false;
-        hitTestSource = null;
-        placed = false; 
-        if(islandModelGroup && islandModelGroup.parent) {
-          scene.remove(islandModelGroup);
+    if (frame.getImageTrackingResults) {
+      const results = frame.getImageTrackingResults();
+      for (const result of results) {
+        if (result.trackingState === 'tracked') {
+          const pose = frame.getPose(result.imageSpace, renderer.xr.getReferenceSpace());
+          if (pose && islandModelGroup) {
+            islandModelGroup.position.setFromMatrixPosition(pose.transform.matrix);
+            islandModelGroup.quaternion.setFromRotationMatrix(pose.transform.matrix);
+            scene.add(islandModelGroup);
+            placed = true;
+            
+            const instructions = document.getElementById('instructions');
+            if(instructions) instructions.style.opacity = '0';
+          }
         }
-      });
-      hitTestSourceRequested = true;
-    }
-
-    if (hitTestSource) {
-      const hitTestResults = frame.getHitTestResults(hitTestSource);
-      if (hitTestResults.length > 0) {
-        const hit = hitTestResults[0];
-        const pose = hit.getPose(referenceSpace);
-        reticle.visible = true;
-        reticle.matrix.fromArray(pose.transform.matrix);
-      } else {
-        reticle.visible = false;
       }
     }
   }
