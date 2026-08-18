@@ -1,172 +1,63 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-    <title>AR Island Project (Universal Edition)</title>
-    
-    <!-- A-Frame (3D Framework) -->
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    
-    <!-- AR.js (Universal Tracking without WebXR) -->
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-
-    <style>
-      /* Keep UI clean, AR.js handles the camera */
-      body { margin: 0; overflow: hidden; font-family: sans-serif; }
-      #loading-overlay {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: #111; color: white; display: flex; flex-direction: column;
-        align-items: center; justify-content: center; z-index: 9999;
-      }
-      #ui-container {
-        position: absolute; bottom: 20px; width: 100%; text-align: center;
-        color: white; z-index: 10; pointer-events: none;
-        text-shadow: 1px 1px 2px black; font-weight: bold;
-      }
-    </style>
-
-    <script>
-      // Component for handling pinch-to-scale and swipe-to-rotate
-      AFRAME.registerComponent('touch-controls', {
-        init: function () {
-          this.initialScale = this.el.object3D.scale.clone();
-          this.scaleFactor = 1;
-          this.lastX = 0;
-          this.initialDistance = null;
-          
-          this.el.sceneEl.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 2) {
-              this.initialDistance = this.getDistance(e.touches);
-              this.initialScale = this.el.object3D.scale.clone();
-            } else if (e.touches.length === 1) {
-              this.lastX = e.touches[0].clientX;
-            }
-          });
-
-          this.el.sceneEl.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 2 && this.initialDistance) {
-              const currentDistance = this.getDistance(e.touches);
-              const scaleRatio = currentDistance / this.initialDistance;
-              
-              const s = this.initialScale.x * scaleRatio;
-              // Clamp scale so it doesn't get infinitely big or small
-              const clampedS = Math.max(0.01, Math.min(s, 0.2)); 
-              this.el.object3D.scale.set(clampedS, clampedS, clampedS);
-              
-            } else if (e.touches.length === 1) {
-              const currentX = e.touches[0].clientX;
-              const deltaX = currentX - this.lastX;
-              
-              this.el.object3D.rotation.y += deltaX * 0.01;
-              this.lastX = currentX;
-            }
-          });
-
-          this.el.sceneEl.addEventListener('touchend', (e) => {
-            if (e.touches.length < 2) {
-              this.initialDistance = null;
-            }
-          });
-        },
-        getDistance: function(touches) {
-          const dx = touches[0].clientX - touches[1].clientX;
-          const dy = touches[0].clientY - touches[1].clientY;
-          return Math.sqrt(dx * dx + dy * dy);
-        }
-      });
-
-      // Component to dynamically clone trees onto the island once models load
-      AFRAME.registerComponent('island-populator', {
-        init: function () {
-          const islandEl = this.el;
-          const treesEl = document.querySelector('#trees-container');
-
-          // Hide loading screen when island loads
-          islandEl.addEventListener('model-loaded', () => {
-            document.getElementById('loading-overlay').style.display = 'none';
-            const islandObject = islandEl.getObject3D('mesh');
-            
-            // Check if trees are ready
-            const treesObject = treesEl.getObject3D('mesh');
-            if (treesObject) {
-              this.populate(islandObject, treesObject);
-            } else {
-              treesEl.addEventListener('model-loaded', () => {
-                this.populate(islandObject, treesEl.getObject3D('mesh'));
-              });
-            }
-          });
-        },
-        populate: function(island, treesGroup) {
-          const treeMeshes = [];
-          treesGroup.traverse((child) => {
-             if(child.name.includes('Tree') && child.isMesh) {
-                treeMeshes.push(child);
-             }
-          });
-
-          island.traverse((node) => {
-            if (node.name && node.name.includes('tree_swapn')) {
-              if (treeMeshes.length > 0) {
-                const randomTree = treeMeshes[Math.floor(Math.random() * treeMeshes.length)].clone();
-                randomTree.position.copy(node.position);
-                randomTree.rotation.copy(node.rotation);
-                randomTree.scale.copy(node.scale);
-                node.parent.add(randomTree);
-              }
-            }
-          });
-        }
-      });
-    </script>
-  </head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prasad Kankhar - AR Portfolio</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0; padding: 0;
+      background: #0f172a; color: #f8fafc;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 100vh; text-align: center;
+    }
+    h1 { margin-bottom: 10px; font-size: 2.5rem; }
+    p { color: #94a3b8; max-width: 600px; line-height: 1.6; margin-bottom: 40px; padding: 0 20px;}
+    .options {
+      display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; padding: 0 20px;
+    }
+    .card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+      padding: 30px; width: 280px; transition: transform 0.2s;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .card:hover { transform: translateY(-5px); border-color: #38bdf8; }
+    .card h2 { color: #38bdf8; margin-top: 0; }
+    .card p { margin-bottom: 30px; font-size: 0.95rem; }
+    .btn {
+      display: inline-block; background: #0ea5e9; color: white; text-decoration: none;
+      padding: 12px 24px; border-radius: 8px; font-weight: bold; transition: background 0.2s;
+    }
+    .btn:hover { background: #0284c7; }
+    .badge {
+      display: inline-block; background: #ef4444; color: white; padding: 4px 8px;
+      border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Welcome to My AR Island</h1>
+  <p>Please select the Augmented Reality experience that best fits your device. Both versions contain the exact same 3D portfolio.</p>
   
-  <body>
-    <div id="loading-overlay">
-      <h2>Loading Universal AR Engine...</h2>
-      <p>Please allow camera permissions when prompted.</p>
+  <div class="options">
+    <div class="card">
+      <div>
+        <span class="badge" style="background: #10b981;">Most Compatible</span>
+        <h2>Universal AR</h2>
+        <p>Uses the Hiro Marker. Works flawlessly on <strong>all iPhones and Androids</strong>. Requires pointing your camera at the printed marker.</p>
+      </div>
+      <a href="./arjs.html" class="btn">Launch Universal AR</a>
     </div>
 
-    <!-- 
-      arjs: Enables universal camera tracking
-      gltf-model: Configures Draco compression decoder automatically 
-    -->
-    <a-scene 
-      embedded 
-      arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;" 
-      gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/;"
-      renderer="antialias: true; alpha: true; colorManagement: true;"
-      vr-mode-ui="enabled: false">
-      
-      <a-assets>
-        <!-- The paths must be relative so Vite copies them correctly to GitHub Pages -->
-        <a-asset-item id="island-gltf" src="./island6_model.glb"></a-asset-item>
-        <a-asset-item id="trees-gltf" src="./trees.glb"></a-asset-item>
-      </a-assets>
-
-      <!-- The universally recognized AR.js Hiro Marker -->
-      <a-marker preset="hiro">
-        <!-- Scale the island to fit the marker and attach our custom populator -->
-        <a-entity 
-          id="island-container" 
-          gltf-model="#island-gltf" 
-          scale="0.05 0.05 0.05" 
-          position="0 0 0" 
-          rotation="0 0 0"
-          island-populator
-          touch-controls>
-        </a-entity>
-        
-        <!-- We load the trees invisibly just to extract their meshes -->
-        <a-entity id="trees-container" gltf-model="#trees-gltf" visible="false"></a-entity>
-      </a-marker>
-
-      <a-entity camera></a-entity>
-    </a-scene>
-    
-    <div id="ui-container">
-      <p>Pinch to scale, swipe to rotate.</p>
+    <div class="card">
+      <div>
+        <span class="badge">Modern Android Only</span>
+        <h2>Advanced Room AR</h2>
+        <p>Uses WebXR. Scans your floor and lets you physically walk freely around the island without a marker. (May not work on iPhone/Safari).</p>
+      </div>
+      <a href="./webxr.html" class="btn">Launch Advanced AR</a>
     </div>
-  </body>
+  </div>
+</body>
 </html>

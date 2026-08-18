@@ -6,5 +6,12 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: './index.html',
+        arjs: './arjs.html',
+        webxr: './webxr.html'
+      }
+    }
   },
 });

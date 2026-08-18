@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>AR Island Project</title>
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+      <div class="spinner"></div>
+      <h2>Downloading World...</h2>
+      <p id="loading-progress">0%</p>
+    </div>
+
+    <!-- Onboarding / Instructions Screen (hidden until loaded) -->
+    <div id="onboarding-screen" class="hidden">
+      <h1>AR Island Setup</h1>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <p>Click <b>"START AR"</b> below to open your camera.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <p>Scan a flat floor or table by moving your phone slowly.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <p>Tap the green ring to place, or <b>just tap anywhere</b> to force spawn it!</p>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <p><b>Pinch</b> to zoom in/out, and <b>swipe</b> to rotate.</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- In-Game UI (hidden until placed) -->
+    <div id="ui-container" class="hidden">
+      <div id="instructions">
+        <p>Pinch to scale, drag to rotate.</p>
+      </div>
+    </div>
+
+    <!-- Three.js App -->
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
