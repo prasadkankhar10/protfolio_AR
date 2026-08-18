@@ -86,9 +86,9 @@
       vr-mode-ui="enabled: false">
       
       <a-assets>
-        <!-- The paths must point to the public directory files in Github Pages -->
-        <a-asset-item id="island-gltf" src="public/island6_model.glb"></a-asset-item>
-        <a-asset-item id="trees-gltf" src="public/trees.glb"></a-asset-item>
+        <!-- The paths must be relative so Vite copies them correctly to GitHub Pages -->
+        <a-asset-item id="island-gltf" src="./island6_model.glb"></a-asset-item>
+        <a-asset-item id="trees-gltf" src="./trees.glb"></a-asset-item>
       </a-assets>
 
       <!-- The universally recognized AR.js Hiro Marker -->
