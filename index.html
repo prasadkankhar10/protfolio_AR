@@ -1,53 +1,113 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>AR Island Project</title>
-    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-    <script>eruda.init();</script>
-    <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="./style.css">
-  </head>
-  <body>
-    <!-- Loading Screen -->
-    <div id="loading-screen">
-      <div class="spinner"></div>
-      <h2>Downloading World...</h2>
-      <p id="loading-progress">0%</p>
-    </div>
-
-    <!-- Onboarding / Instructions Screen (hidden until loaded) -->
-    <div id="onboarding-screen" class="hidden">
-      <h1>AR Island Setup</h1>
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <p>Click <b>"START AR"</b> below to open your camera.</p>
-        </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <p>Scan a flat floor or table by moving your phone slowly.</p>
-        </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <p>Tap the green ring to place, or <b>just tap anywhere</b> to force spawn it!</p>
-        </div>
-        <div class="step">
-          <div class="step-num">4</div>
-          <p><b>Pinch</b> to zoom in/out, and <b>swipe</b> to rotate.</p>
-        </div>
-      </div>
-    </div>
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <title>AR Island Project (Universal Edition)</title>
     
-    <!-- In-Game UI (hidden until placed) -->
-    <div id="ui-container" class="hidden">
-      <div id="instructions">
-        <p>Pinch to scale, drag to rotate.</p>
-      </div>
+    <!-- A-Frame (3D Framework) -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    
+    <!-- AR.js (Universal Tracking without WebXR) -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+    <style>
+      /* Keep UI clean, AR.js handles the camera */
+      body { margin: 0; overflow: hidden; font-family: sans-serif; }
+      #loading-overlay {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: #111; color: white; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; z-index: 9999;
+      }
+    </style>
+
+    <script>
+      // Component to dynamically clone trees onto the island once models load
+      AFRAME.registerComponent('island-populator', {
+        init: function () {
+          const islandEl = this.el;
+          const treesEl = document.querySelector('#trees-container');
+
+          // Hide loading screen when island loads
+          islandEl.addEventListener('model-loaded', () => {
+            document.getElementById('loading-overlay').style.display = 'none';
+            const islandObject = islandEl.getObject3D('mesh');
+            
+            // Check if trees are ready
+            const treesObject = treesEl.getObject3D('mesh');
+            if (treesObject) {
+              this.populate(islandObject, treesObject);
+            } else {
+              treesEl.addEventListener('model-loaded', () => {
+                this.populate(islandObject, treesEl.getObject3D('mesh'));
+              });
+            }
+          });
+        },
+        populate: function(island, treesGroup) {
+          const treeMeshes = [];
+          treesGroup.traverse((child) => {
+             if(child.name.includes('Tree') && child.isMesh) {
+                treeMeshes.push(child);
+             }
+          });
+
+          island.traverse((node) => {
+            if (node.name && node.name.includes('tree_swapn')) {
+              if (treeMeshes.length > 0) {
+                const randomTree = treeMeshes[Math.floor(Math.random() * treeMeshes.length)].clone();
+                randomTree.position.copy(node.position);
+                randomTree.rotation.copy(node.rotation);
+                randomTree.scale.copy(node.scale);
+                node.parent.add(randomTree);
+              }
+            }
+          });
+        }
+      });
+    </script>
+  </head>
+  
+  <body>
+    <div id="loading-overlay">
+      <h2>Loading Universal AR Engine...</h2>
+      <p>Please allow camera permissions when prompted.</p>
     </div>
 
-    <!-- Three.js App -->
-    <script type="module" src="./main.js"></script>
+    <!-- 
+      arjs: Enables universal camera tracking
+      gltf-model: Configures Draco compression decoder automatically 
+    -->
+    <a-scene 
+      embedded 
+      arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;" 
+      gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/;"
+      renderer="antialias: true; alpha: true; colorManagement: true;"
+      vr-mode-ui="enabled: false">
+      
+      <a-assets>
+        <!-- The paths must point to the public directory files in Github Pages -->
+        <a-asset-item id="island-gltf" src="public/island6_model.glb"></a-asset-item>
+        <a-asset-item id="trees-gltf" src="public/trees.glb"></a-asset-item>
+      </a-assets>
+
+      <!-- The universally recognized AR.js Hiro Marker -->
+      <a-marker preset="hiro">
+        <!-- Scale the island to fit the marker and attach our custom populator -->
+        <a-entity 
+          id="island-container" 
+          gltf-model="#island-gltf" 
+          scale="0.05 0.05 0.05" 
+          position="0 0 0" 
+          rotation="0 0 0"
+          island-populator>
+        </a-entity>
+        
+        <!-- We load the trees invisibly just to extract their meshes -->
+        <a-entity id="trees-container" gltf-model="#trees-gltf" visible="false"></a-entity>
+      </a-marker>
+
+      <a-entity camera></a-entity>
+    </a-scene>
   </body>
 </html>
