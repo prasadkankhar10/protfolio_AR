@@ -19,9 +19,63 @@
         background: #111; color: white; display: flex; flex-direction: column;
         align-items: center; justify-content: center; z-index: 9999;
       }
+      #ui-container {
+        position: absolute; bottom: 20px; width: 100%; text-align: center;
+        color: white; z-index: 10; pointer-events: none;
+        text-shadow: 1px 1px 2px black; font-weight: bold;
+      }
     </style>
 
     <script>
+      // Component for handling pinch-to-scale and swipe-to-rotate
+      AFRAME.registerComponent('touch-controls', {
+        init: function () {
+          this.initialScale = this.el.object3D.scale.clone();
+          this.scaleFactor = 1;
+          this.lastX = 0;
+          this.initialDistance = null;
+          
+          this.el.sceneEl.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+              this.initialDistance = this.getDistance(e.touches);
+              this.initialScale = this.el.object3D.scale.clone();
+            } else if (e.touches.length === 1) {
+              this.lastX = e.touches[0].clientX;
+            }
+          });
+
+          this.el.sceneEl.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && this.initialDistance) {
+              const currentDistance = this.getDistance(e.touches);
+              const scaleRatio = currentDistance / this.initialDistance;
+              
+              const s = this.initialScale.x * scaleRatio;
+              // Clamp scale so it doesn't get infinitely big or small
+              const clampedS = Math.max(0.01, Math.min(s, 0.2)); 
+              this.el.object3D.scale.set(clampedS, clampedS, clampedS);
+              
+            } else if (e.touches.length === 1) {
+              const currentX = e.touches[0].clientX;
+              const deltaX = currentX - this.lastX;
+              
+              this.el.object3D.rotation.y += deltaX * 0.01;
+              this.lastX = currentX;
+            }
+          });
+
+          this.el.sceneEl.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) {
+              this.initialDistance = null;
+            }
+          });
+        },
+        getDistance: function(touches) {
+          const dx = touches[0].clientX - touches[1].clientX;
+          const dy = touches[0].clientY - touches[1].clientY;
+          return Math.sqrt(dx * dx + dy * dy);
+        }
+      });
+
       // Component to dynamically clone trees onto the island once models load
       AFRAME.registerComponent('island-populator', {
         init: function () {
@@ -100,7 +154,8 @@
           scale="0.05 0.05 0.05" 
           position="0 0 0" 
           rotation="0 0 0"
-          island-populator>
+          island-populator
+          touch-controls>
         </a-entity>
         
         <!-- We load the trees invisibly just to extract their meshes -->
@@ -109,5 +164,9 @@
 
       <a-entity camera></a-entity>
     </a-scene>
+    
+    <div id="ui-container">
+      <p>Pinch to scale, swipe to rotate.</p>
+    </div>
   </body>
 </html>
