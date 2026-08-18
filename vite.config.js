@@ -10,7 +10,8 @@ export default defineConfig({
       input: {
         main: './index.html',
         arjs: './arjs.html',
-        webxr: './webxr.html'
+        webxr: './webxr.html',
+        eighthwall: './8thwall.html'
       }
     }
   },

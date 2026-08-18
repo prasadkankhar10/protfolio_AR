@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>8th Wall AR Engine</title>
+  
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js" crossorigin="anonymous"></script>
+  
+  <!-- 8th Wall Open Source Engine Integrations -->
+  <script src="https://cdn.jsdelivr.net/npm/@8thwall/xrextras@1/dist/xrextras.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@8thwall/landing-page@1/dist/landing-page.js" crossorigin="anonymous"></script>
+  
+  <!-- 8th Wall Core SLAM Engine -->
+  <script src="https://cdn.jsdelivr.net/npm/@8thwall/engine-binary@1/dist/xr.js" crossorigin="anonymous" async="true" data-preload-chunks="slam"></script>
+</head>
+<body>
+  <!-- The xrweb component initializes the 8th Wall SLAM Engine -->
+  <a-scene
+    xrextras-gesture-detector
+    xrextras-almost-there
+    xrextras-loading
+    xrextras-runtime-error
+    renderer="colorManagement: true;"
+    xrweb>
+    
+    <a-assets>
+      <a-asset-item id="island-glb" src="./island6_model.glb"></a-asset-item>
+    </a-assets>
+
+    <a-camera
+      position="0 4 10"
+      raycaster="objects: .cantap"
+      cursor="fuse: false; rayOrigin: mouse;">
+    </a-camera>
+
+    <a-light type="directional" intensity="0.5" position="1 1 1"></a-light>
+    <a-light type="ambient" intensity="1"></a-light>
+
+    <!-- The Island with 8th Wall's built-in advanced gesture controls -->
+    <a-entity
+      gltf-model="#island-glb"
+      position="0 0 -5"
+      scale="0.05 0.05 0.05"
+      class="cantap"
+      xrextras-hold-drag
+      xrextras-two-finger-rotate
+      xrextras-pinch-scale>
+    </a-entity>
+  </a-scene>
+</body>
+</html>
