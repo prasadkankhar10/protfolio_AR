@@ -1,7 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { KeyboardControls } from '@react-three/drei';
 import type { KeyboardControlsEntry } from '@react-three/drei';
-import { Suspense, useMemo, useEffect } from 'react';
+import { Suspense, useMemo, useEffect, useState } from 'react';
 import { Layout } from './components/Layout';
 import { Scene } from './components/3d/Scene';
 import { useGameStore } from './store/useGameStore';
@@ -9,7 +9,7 @@ import { DialogOverlay } from './components/ui/DialogOverlay';
 import { MobileControls } from './components/ui/MobileControls';
 import { RotateDeviceOverlay } from './components/ui/RotateDeviceOverlay';
 import { PortfolioTracker } from './components/ui/PortfolioTracker';
-import { ARButton, XR } from '@react-three/xr';
+import { EighthWallXR } from './components/3d/EighthWallXR';
 
 export const Controls = {
   forward: 'forward',
@@ -28,6 +28,7 @@ function App() {
   const hasStarted = useGameStore((state) => state.hasStarted);
   const setIsMobile = useGameStore((state) => state.setIsMobile);
   const isMobile = useGameStore((state) => state.isMobile);
+  const [isARActive, setIsARActive] = useState(false);
 
   useEffect(() => {
     // Basic mobile detection based on pointer type (coarse = touch)
@@ -82,18 +83,22 @@ function App() {
 
   return (
     <KeyboardControls map={map}>
-      <ARButton 
-        sessionInit={{ 
-          requiredFeatures: ['hit-test'], 
-          optionalFeatures: ['dom-overlay'], 
-          domOverlay: { root: document.body } 
-        }} 
+      <button 
+        onClick={() => {
+          if (isARActive) {
+            window.location.reload(); // Quickest way to clean up 8th Wall engine
+          } else {
+            setIsARActive(true);
+          }
+        }}
         style={{ 
           position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', 
           zIndex: 9999, padding: '12px 24px', borderRadius: '8px', background: '#ec4899', color: 'white', 
           fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' 
         }}
-      />
+      >
+        {isARActive ? "Exit AR" : "Enter AR (8th Wall)"}
+      </button>
       <Layout />
       {hasStarted && <DialogOverlay />}
       {hasStarted && <MobileControls />}
@@ -106,11 +111,10 @@ function App() {
           gl={{ antialias: true }}
           dpr={[1, 1.5]}
         >
-          <XR>
-            <Suspense fallback={null}>
-              <Scene />
-            </Suspense>
-          </XR>
+          <EighthWallXR active={isARActive} />
+          <Suspense fallback={null}>
+            <Scene />
+          </Suspense>
         </Canvas>
       </div>
     </KeyboardControls>
