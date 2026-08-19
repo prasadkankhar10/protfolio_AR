@@ -14,8 +14,91 @@
   
   <!-- 8th Wall Core SLAM Engine -->
   <script src="https://cdn.jsdelivr.net/npm/@8thwall/engine-binary@1/dist/xr.js" crossorigin="anonymous" async="true" data-preload-chunks="slam"></script>
+
+  <style>
+    #ui-container {
+      position: absolute; bottom: 20px; width: 100%; text-align: center;
+      color: white; z-index: 9999; pointer-events: none;
+      text-shadow: 1px 1px 2px black; font-weight: bold;
+    }
+  </style>
+  <script>
+    // Custom global touch controls (easier to use than xrextras which require hitting the mesh)
+    AFRAME.registerComponent('touch-controls', {
+      init: function () {
+        this.initialScale = this.el.object3D.scale.clone();
+        this.scaleFactor = 1;
+        this.lastX = 0;
+        this.lastY = 0;
+        this.initialDistance = null;
+        this.mode = 'rotate'; // 'rotate' or 'move'
+        
+        const btn = document.getElementById('toggle-mode');
+        if (btn) {
+          btn.style.pointerEvents = 'auto';
+          btn.addEventListener('click', () => {
+            this.mode = this.mode === 'rotate' ? 'move' : 'rotate';
+            btn.innerText = 'Mode: ' + (this.mode === 'rotate' ? 'Rotate' : 'Move');
+          });
+        }
+        
+        this.el.sceneEl.addEventListener('touchstart', (e) => {
+          if (e.touches.length === 2) {
+            this.initialDistance = this.getDistance(e.touches);
+            this.initialScale = this.el.object3D.scale.clone();
+          } else if (e.touches.length === 1) {
+            this.lastX = e.touches[0].clientX;
+            this.lastY = e.touches[0].clientY;
+          }
+        });
+
+        this.el.sceneEl.addEventListener('touchmove', (e) => {
+          if (e.touches.length === 2 && this.initialDistance) {
+            const currentDistance = this.getDistance(e.touches);
+            const scaleRatio = currentDistance / this.initialDistance;
+            
+            const s = this.initialScale.x * scaleRatio;
+            const clampedS = Math.max(0.01, Math.min(s, 0.2)); 
+            this.el.object3D.scale.set(clampedS, clampedS, clampedS);
+            
+          } else if (e.touches.length === 1) {
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const deltaX = currentX - this.lastX;
+            const deltaY = currentY - this.lastY;
+            
+            if (this.mode === 'rotate') {
+              this.el.object3D.rotation.y += deltaX * 0.01;
+            } else {
+              // For 8th Wall SLAM, moving X and Z translates it across the floor
+              this.el.object3D.position.x += deltaX * 0.005;
+              this.el.object3D.position.z += deltaY * 0.005;
+            }
+            
+            this.lastX = currentX;
+            this.lastY = currentY;
+          }
+        });
+
+        this.el.sceneEl.addEventListener('touchend', (e) => {
+          if (e.touches.length < 2) {
+            this.initialDistance = null;
+          }
+        });
+      },
+      getDistance: function(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+    });
+  </script>
 </head>
 <body>
+  <div id="ui-container">
+    <p style="margin-bottom: 10px;">Pinch to scale</p>
+    <button id="toggle-mode" style="padding: 10px 20px; font-size: 16px; border-radius: 8px; border: none; background: #7c3aed; color: white; margin-bottom: 20px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">Mode: Rotate</button>
+  </div>
   <!-- The xrweb component initializes the 8th Wall SLAM Engine -->
   <a-scene
     xrextras-gesture-detector
@@ -38,15 +121,12 @@
     <a-light type="directional" intensity="0.5" position="1 1 1"></a-light>
     <a-light type="ambient" intensity="1"></a-light>
 
-    <!-- The Island with 8th Wall's built-in advanced gesture controls -->
+    <!-- The Island with our custom global touch gestures -->
     <a-entity
       gltf-model="#island-glb"
       position="0 0 -5"
       scale="0.05 0.05 0.05"
-      class="cantap"
-      xrextras-hold-drag
-      xrextras-two-finger-rotate
-      xrextras-pinch-scale>
+      touch-controls>
     </a-entity>
   </a-scene>
 </body>
