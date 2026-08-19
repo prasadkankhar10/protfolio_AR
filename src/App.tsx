@@ -9,6 +9,7 @@ import { DialogOverlay } from './components/ui/DialogOverlay';
 import { MobileControls } from './components/ui/MobileControls';
 import { RotateDeviceOverlay } from './components/ui/RotateDeviceOverlay';
 import { PortfolioTracker } from './components/ui/PortfolioTracker';
+import { ARButton, XR } from '@react-three/xr';
 
 export const Controls = {
   forward: 'forward',
@@ -55,14 +56,14 @@ function App() {
         toggleTracker();
       }
       if (e.key.toLowerCase() === 'y') {
-        const store = useGameStore.getState();
-        if (!store.activeRitual) {
-          store.setActiveRitual(true);
-          store.setRitualState('gathering');
+        const gameStore = useGameStore.getState();
+        if (!gameStore.activeRitual) {
+          gameStore.setActiveRitual(true);
+          gameStore.setRitualState('gathering');
         } else {
           // Pressing Y again cancels it for testing
-          store.setActiveRitual(false);
-          store.setRitualState('idle');
+          gameStore.setActiveRitual(false);
+          gameStore.setRitualState('idle');
         }
       }
     };
@@ -81,6 +82,18 @@ function App() {
 
   return (
     <KeyboardControls map={map}>
+      <ARButton 
+        sessionInit={{ 
+          requiredFeatures: ['hit-test'], 
+          optionalFeatures: ['dom-overlay'], 
+          domOverlay: { root: document.body } 
+        }} 
+        style={{ 
+          position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', 
+          zIndex: 9999, padding: '12px 24px', borderRadius: '8px', background: '#ec4899', color: 'white', 
+          fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' 
+        }}
+      />
       <Layout />
       {hasStarted && <DialogOverlay />}
       {hasStarted && <MobileControls />}
@@ -93,9 +106,11 @@ function App() {
           gl={{ antialias: true }}
           dpr={[1, 1.5]}
         >
-          <Suspense fallback={null}>
-            <Scene />
-          </Suspense>
+          <XR>
+            <Suspense fallback={null}>
+              <Scene />
+            </Suspense>
+          </XR>
         </Canvas>
       </div>
     </KeyboardControls>
